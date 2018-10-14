@@ -7,11 +7,10 @@ import java.util.concurrent.locks.ReentrantLock;
 public class TaskManager {
 
     private Lock lock = new ReentrantLock();
-    private final Object runLock;
+    private static final Object runLock = new Object();
     private ArrayList<Task> taskQueue = new ArrayList<>();
 
     public TaskManager() {
-        this.runLock = this;
     }
 
     /**
@@ -27,7 +26,9 @@ public class TaskManager {
             taskQueue.add(task);
         } finally {
             lock.unlock();
-            runLock.notify();
+            synchronized (runLock) {
+                runLock.notify();
+            }
         }
     }
 
@@ -44,7 +45,9 @@ public class TaskManager {
                 taskQueue.add(task);
             } finally {
                 lock.unlock();
-                runLock.notify();
+                synchronized (runLock) {
+                    runLock.notify();
+                }
             }
         }).start();
 
@@ -56,7 +59,7 @@ public class TaskManager {
      */
     public void tick() {
         Task someTask;
-        synchronized (runLock) {
+        synchronized (TaskManager.runLock) {
             while (true) {
                 try {
                     if (taskQueue.isEmpty()) {
